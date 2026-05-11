@@ -168,6 +168,7 @@ class SuperuserLoginView(APIView):
     """
     permission_classes = [permissions.AllowAny]
     throttle_classes = [AuthRateThrottle]
+    authentication_classes = []
 
     @swagger_auto_schema(
         operation_summary="Superuser login",
@@ -306,6 +307,7 @@ class ResendOTPView(APIView):
     """
     permission_classes = [permissions.AllowAny]
     throttle_classes = [OTPRateThrottle]
+    authentication_classes = []
 
     def post(self, request):
         email = request.data.get('email')
