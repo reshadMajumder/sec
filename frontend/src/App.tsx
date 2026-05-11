@@ -21,6 +21,8 @@ import { CommitteeSection } from './components/CommitteeSection';
 import { WingDetail } from './components/WingDetail';
 import { RegisterEvent } from './components/RegisterEvent';
 import { LegendsPage } from './components/LegendsPage';
+import { ApplyPage } from './components/ApplyPage';
+import { ApplyOtpPage } from './components/ApplyOtpPage';
 
 function LandingPage({ 
   activeIndex, 
@@ -350,7 +352,7 @@ function LandingPage({
                   <div className="absolute inset-0 flex items-center justify-center p-8">
                     <div className="text-center">
                       <p className="text-[9px] tracking-[0.4em] font-black opacity-40 mb-6 uppercase">Join the Collective</p>
-                      <button className="text-[10px] font-black px-10 py-4 bg-white text-black hover:bg-neutral-200 transition-colors uppercase tracking-widest active:scale-95 duration-200">
+                      <button onClick={() => navigate('/apply')} className="text-[10px] font-black px-10 py-4 bg-white text-black hover:bg-neutral-200 transition-colors uppercase tracking-widest active:scale-95 duration-200">
                         Apply Now
                       </button>
                     </div>
@@ -623,6 +625,8 @@ export default function App() {
           />
           <Route path="/wing/:wingId" element={<WingDetail />} />
           <Route path="/register/:eventId" element={<RegisterEvent />} />
+          <Route path="/apply" element={<ApplyPage />} />
+          <Route path="/apply/verify-otp" element={<ApplyOtpPage />} />
           <Route path="/community" element={<CommunityPage />} />
           <Route path="/legends" element={<LegendsPage />} />
         </Routes>
