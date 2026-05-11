@@ -16,6 +16,7 @@ from pathlib import Path
 import cloudinary
 import cloudinary.uploader
 import cloudinary.api
+from django.core.exceptions import ImproperlyConfigured
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -23,6 +24,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 
 from dotenv import load_dotenv
 import os
+import dj_database_url
 load_dotenv()
 
 # Quick-start development settings - unsuitable for production
@@ -95,7 +97,8 @@ WSGI_APPLICATION = 'core.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-
+DATABASE_URL = (os.getenv('DATABASE_URL') or os.getenv('DB_URL') or '').strip()
+CONN_MAX_AGE = int(os.getenv('CONN_MAX_AGE', '60'))
 if DEBUG:
     DATABASES = {
         'default': {
@@ -105,21 +108,21 @@ if DEBUG:
     }
 
 else:
+    # Accept values copied from CLI docs, e.g. "psql 'postgresql://...'"
+    if DATABASE_URL.startswith('psql '):
+        DATABASE_URL = DATABASE_URL[5:].strip()
+
+    DATABASE_URL = DATABASE_URL.strip("'\"")
+    if not DATABASE_URL:
+        raise ImproperlyConfigured("DATABASE_URL (or DB_URL) is required when DEBUG=False")
+
     DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.getenv('DB_NAME'),
-            'USER': os.getenv('DB_USER'),
-            'PASSWORD': os.getenv('DB_PASSWORD'),
-            'HOST': os.getenv('DB_HOST'),
-            'PORT': os.getenv('DB_PORT', '5432'),
-            'OPTIONS': {
-                'sslmode': os.getenv('DB_SSLMODE', 'require'),
-            },
-        }
+        'default': dj_database_url.parse(
+            DATABASE_URL,
+            conn_max_age=CONN_MAX_AGE,
+            ssl_require=not DEBUG,
+        )
     }
-
-
 
 # Password validation
 # https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
@@ -200,12 +203,13 @@ SIMPLE_JWT = {
 
 
 
-if DEBUG:
-    CORS_ALLOW_ALL_ORIGINS = True
-else:
-    CORS_ALLOWED_ORIGINS = [
+# if DEBUG:
+#     CORS_ALLOW_ALL_ORIGINS = True
+# else:
+#     CORS_ALLOWED_ORIGINS = [
         
-    ]
+#     ]
+CORS_ALLOW_ALL_ORIGINS = True  #TODO: Update this for production with specific allowed origins
 
 
 
