@@ -123,6 +123,20 @@ class UserSerializer(serializers.ModelSerializer):
         ]
         read_only_fields = ['id', 'sec_userid', 'email', 'is_email_verified', 'is_payment_verified']
 
+
+class AdminUserListSerializer(serializers.ModelSerializer):
+    user_id = serializers.IntegerField(source='id', read_only=True)
+    name = serializers.SerializerMethodField()
+    active = serializers.BooleanField(source='is_active', read_only=True)
+
+    class Meta:
+        model = User
+        fields = ['user_id', 'name', 'batch', 'active', 'phone']
+
+    def get_name(self, obj):
+        full_name = f"{obj.first_name} {obj.last_name or ''}".strip()
+        return full_name
+
 class LoginSerializer(serializers.Serializer):
     sec_userid = serializers.CharField(required=False, allow_blank=True)
     email = serializers.EmailField(required=False)

@@ -3,7 +3,7 @@ from rest_framework.response import Response
 from rest_framework_simplejwt.tokens import RefreshToken
 from django.contrib.auth import authenticate
 from .models import User
-from .serializers import RegisterSerializer, UserSerializer, LoginSerializer
+from .serializers import RegisterSerializer, UserSerializer, LoginSerializer, AdminUserListSerializer
 from rest_framework.views import APIView
 from .otp_adapter import EmailOTPAdapter
 from .utils import generate_otp
@@ -11,6 +11,19 @@ from core.throttles import AuthRateThrottle, OTPRateThrottle
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
 from payments.models import Payment
+from core.permissions import IsAdmin
+from django.db.models import Q
+
+
+def _parse_bool_param(value):
+    if value is None:
+        return None
+    normalized = str(value).strip().lower()
+    if normalized in {'true', '1', 'yes'}:
+        return True
+    if normalized in {'false', '0', 'no'}:
+        return False
+    return None
 
 class RegisterView(generics.CreateAPIView):
     """
@@ -327,6 +340,107 @@ class ResendOTPView(APIView):
         otp_sender.send_otp(user, otp_code)
 
         return Response({"detail": "OTP resent successfully."}, status=status.HTTP_200_OK)
+
+
+class AdminUserListView(generics.ListAPIView):
+    """
+    Superuser-only endpoint to view users with filtering and sorting support.
+
+    Query params:
+    - search
+    - department
+    - enrollment_year
+    - enrollment_semester
+    - batch
+    - section
+    - is_email_verified
+    - is_payment_verified
+    - is_active
+    - is_staff
+    - is_superuser
+    - ordering (e.g. first_name, -created_at)
+    """
+    serializer_class = AdminUserListSerializer
+    permission_classes = [IsAdmin]
+
+    def get_queryset(self):
+        queryset = User.objects.all()
+
+        search = self.request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(
+                Q(sec_userid__icontains=search)
+                | Q(email__icontains=search)
+                | Q(first_name__icontains=search)
+                | Q(last_name__icontains=search)
+                | Q(student_id__icontains=search)
+                | Q(registration_number__icontains=search)
+            )
+
+        department = self.request.query_params.get('department')
+        if department:
+            queryset = queryset.filter(department=department)
+
+        enrollment_year = self.request.query_params.get('enrollment_year')
+        if enrollment_year:
+            queryset = queryset.filter(enrollment_year=enrollment_year)
+
+        enrollment_semester = self.request.query_params.get('enrollment_semester')
+        if enrollment_semester:
+            queryset = queryset.filter(enrollment_semester__iexact=enrollment_semester)
+
+        batch = self.request.query_params.get('batch')
+        if batch:
+            queryset = queryset.filter(batch__iexact=batch)
+
+        section = self.request.query_params.get('section')
+        if section:
+            queryset = queryset.filter(section__iexact=section)
+
+        boolean_filters = {
+            'is_email_verified': 'is_email_verified',
+            'is_payment_verified': 'is_payment_verified',
+            'is_active': 'is_active',
+            'is_staff': 'is_staff',
+            'is_superuser': 'is_superuser',
+        }
+        for param, field in boolean_filters.items():
+            parsed = _parse_bool_param(self.request.query_params.get(param))
+            if parsed is not None:
+                queryset = queryset.filter(**{field: parsed})
+
+        allowed_ordering_fields = {
+            'id',
+            'sec_userid',
+            'email',
+            'first_name',
+            'last_name',
+            'department',
+            'batch',
+            'section',
+            'enrollment_year',
+            'enrollment_semester',
+            'is_email_verified',
+            'is_payment_verified',
+            'is_active',
+        }
+        ordering = self.request.query_params.get('ordering', '-id')
+        clean_ordering = ordering.lstrip('-')
+        if clean_ordering in allowed_ordering_fields:
+            queryset = queryset.order_by(ordering)
+        else:
+            queryset = queryset.order_by('-id')
+
+        return queryset
+
+
+class AdminUserDetailView(generics.RetrieveAPIView):
+    """
+    Superuser-only endpoint to view details of a specific user by id.
+    """
+    serializer_class = UserSerializer
+    permission_classes = [IsAdmin]
+    queryset = User.objects.all()
 
 
 """ we will implement later"""

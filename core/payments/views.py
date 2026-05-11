@@ -4,6 +4,7 @@ from rest_framework import permissions, serializers, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from accounts.models import User
 from core.permissions import IsAdmin
 from .models import Payment
 from .serializers import AdminPaymentUpdateSerializer, PaymentCreateSerializer, PaymentSerializer
@@ -218,6 +219,73 @@ class AdminPaymentDetailAPIView(APIView):
 			return Response(
 				{
 					'message': 'An error occurred while updating payment.',
+					'error': str(e),
+				},
+				status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+			)
+
+
+class AdminUserPaymentHistoryAPIView(APIView):
+	permission_classes = [IsAdmin]
+
+	def get(self, request, user_id):
+		try:
+			try:
+				user = User.objects.get(id=user_id)
+			except User.DoesNotExist:
+				return Response(
+					{'message': 'User not found.'},
+					status=status.HTTP_404_NOT_FOUND,
+				)
+
+			payments = Payment.objects.filter(user_id=user_id)
+
+			allowed_sort_fields = {
+				'id',
+				'amount',
+				'method',
+				'payment_type',
+				'status',
+				'created_at',
+				'updated_at',
+			}
+			sort_by = request.query_params.get('sort_by', 'created_at')
+			sort_order = request.query_params.get('sort_order', 'desc').lower()
+
+			if sort_by not in allowed_sort_fields:
+				return Response(
+					{'message': 'Invalid sort_by field.'},
+					status=status.HTTP_400_BAD_REQUEST,
+				)
+
+			if sort_order not in {'asc', 'desc'}:
+				return Response(
+					{'message': 'sort_order must be asc or desc.'},
+					status=status.HTTP_400_BAD_REQUEST,
+				)
+
+			ordering = sort_by if sort_order == 'asc' else f'-{sort_by}'
+			payments = payments.order_by(ordering)
+
+			serializer = PaymentSerializer(payments, many=True)
+			return Response(
+				{
+					'message': 'User payment history fetched successfully.',
+					'user': {
+						'id': user.id,
+						'sec_userid': user.sec_userid,
+						'name': f"{user.first_name} {user.last_name or ''}".strip(),
+					},
+					'count': len(serializer.data),
+					'payments': serializer.data,
+				},
+				status=status.HTTP_200_OK,
+			)
+
+		except Exception as e:
+			return Response(
+				{
+					'message': 'An error occurred while fetching user payment history.',
 					'error': str(e),
 				},
 				status=status.HTTP_500_INTERNAL_SERVER_ERROR,
