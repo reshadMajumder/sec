@@ -8,3 +8,4 @@ coverage/
 !.env.example
 *.pyc
 *.sqlite3
+*.1326473400240
