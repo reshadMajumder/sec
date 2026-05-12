@@ -9,6 +9,10 @@ from rest_framework import status
 from accounts.models import User
 from .models import CommitteeTerm, Wing, Position, Assignment, PositionCategory
 
+from faker import Faker
+
+fake = Faker()
+
 
 class CommitteeTermModelTest(TestCase):
 	"""Test CommitteeTerm model"""
@@ -528,29 +532,37 @@ class MemberViewSetTest(TestCase):
 	"""Test Member operations"""
 
 	def setUp(self):
-		self.user1 = User.objects.create_user(
-			sec_userid='user001',
-			email='user1@example.com',
-			password='testpass123',
-			first_name='Charlie',
-			last_name='Brown',
-			batch='2020',
-			department='CS'
-		)
-		self.user2 = User.objects.create_user(
-			sec_userid='user002',
-			email='user2@example.com',
-			password='testpass123',
-			first_name='Diana',
-			last_name='Prince',
-			batch='2021',
-			department='ME'
-		)
+		self.users = []
+		for i in range(10):
+			user = User.objects.create_user(
+				sec_userid=f'user{i:03d}',
+				email=fake.unique.email(),
+				password='testpass123',
+				first_name=fake.first_name(),
+				last_name=fake.last_name(),
+				batch=str(fake.random_int(min=2015, max=2025)),
+				department=fake.random_element(elements=('CS', 'ME', 'EE', 'CE'))
+			)
+			self.users.append(user)
+		
+		self.user1 = self.users[0]
+		self.user1.first_name = 'Charlie'
+		self.user1.last_name = 'Brown'
+		self.user1.batch = '2020'
+		self.user1.department = 'CS'
+		self.user1.save()
+
+		self.user2 = self.users[1]
+		self.user2.first_name = 'Diana'
+		self.user2.last_name = 'Prince'
+		self.user2.batch = '2021'
+		self.user2.department = 'ME'
+		self.user2.save()
 
 	def test_list_members(self):
 		"""Test retrieving all members"""
 		members = User.objects.all()
-		self.assertEqual(members.count(), 2)
+		self.assertEqual(members.count(), 10)
 
 	def test_retrieve_member(self):
 		"""Test retrieving a member"""

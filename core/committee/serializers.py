@@ -133,12 +133,14 @@ class AssignmentSerializer(serializers.ModelSerializer):
 			'created_at',
 		]
 		read_only_fields = ['id', 'created_at']
+		validators = []
 
 	def validate(self, attrs):
 		member = attrs.get('member', getattr(self.instance, 'member', None))
 		committee_term = attrs.get('committee_term', getattr(self.instance, 'committee_term', None))
 		wing = attrs.get('wing', getattr(self.instance, 'wing', None))
 		position = attrs.get('position', getattr(self.instance, 'position', None))
+		assigned_at = attrs.get('assigned_at', getattr(self.instance, 'assigned_at', None))
 
 		duplicate = Assignment.objects.filter(
 			member=member,
@@ -150,5 +152,8 @@ class AssignmentSerializer(serializers.ModelSerializer):
 			duplicate = duplicate.exclude(pk=self.instance.pk)
 		if duplicate.exists():
 			raise serializers.ValidationError('This assignment already exists.')
+
+		if committee_term and assigned_at and assigned_at.date() < committee_term.start_date:
+			raise serializers.ValidationError({'assigned_at': 'assigned_at cannot be earlier than the committee term start date.'})
 
 		return attrs
